@@ -1,12 +1,19 @@
 import numpy as np
 from itertools import combinations
 from itertools import chain
+from pprint import pprint
+
+DEBUG = True
+
+def debug(msg):
+	if DEBUG:
+		pprint(msg)
 
 data = [
-	[1, 2, 2, 1, 6],
-	[2, 1, 1, 0, 6],
-	[2, 2, 1, 7, 6],
-	[8, 9, 2, 6, 7]
+	[1, 2, 0, 1, 6, 8, 4, 2, 1],
+	[2, 1, 1, 0, 6, 8, 4, 1, 2],
+	[2, 2, 1, 7, 6, 8, 4, 0, 2],
+	[8, 9, 1, 6, 7, 5, 1, 2, 2]
 ]
 
 data = np.array(data)
@@ -38,33 +45,34 @@ def disp_bc(coll_bc):
 def get_max_d_ij(A_r, j, D):
 	tmp = [D[i,j] for i in A_r]
 	tmp = np.array(tmp)
-	print('>', tmp)
+	# print('>', np.max(tmp))
 	return np.max(tmp)
 
 
 def get_min_d_ij(A_r, j, D):
 	tmp = [ D[i][j] for i in A_r ]
-	print('>', tmp)
+
 	tmp = np.array(tmp)
+	# print('>', np.min(tmp))
 	return np.min(tmp)
 
 
 def add_to_set(B, j):
+	B = list(B)
 	B.append(j)
 	B = list(set(sorted(B)))
 	return B
 
 
 def get_possible_extents(A, D, j):
-	print(' >>> get_possible_extents')
 	power_set = powerset(A)
 	extents = []
 	# check the formal concepts
 
 	for s in power_set:
-		print ('cand_A' ,s , 'Cand_j',j)
-		print(get_max_d_ij(A,j,D),get_min_d_ij(A,j,D))
-		if get_max_d_ij(A,j,D) == get_min_d_ij(A,j,D):
+		# print ('cand_A' ,s , 'Cand_j',j)
+		# print(get_max_d_ij(A,j,D),get_min_d_ij(A,j,D))
+		if get_max_d_ij(s,j,D) == get_min_d_ij(s,j,D):
 			extents.append(s)
 
 	extents = list(sorted(extents))
@@ -122,53 +130,53 @@ def is_canonical(RW, B, D, j):
 def in_close_cvc(D, min_rows, r, y, coll_bc):
 	global r_new
 
-	print('---')
-	print(' In in_close ::', 'r=', r, 'y=', y)
-	# disp_bc(coll_bc)
-	print("Working to close ", coll_bc[r])
+	# print('---')
+	# print(' In in_close ::', 'r=', r, 'y=', y)
+	disp_bc(coll_bc)
+	# print("Working to close ", coll_bc[r])
 
 	J = []
 	R = []
 	m = np.array(D).shape[1]
 	B_r = coll_bc[r][1]
-	print('current B_r', B_r)
+	# print('current B_r', B_r)
+
 	for j in range(y, m):
-		print('-----')
+		# print('-----')
 		# check if j does not belong to B_r
 		if j not in B_r:
+
 			A_r = coll_bc[r][0]
+
 			max_i = get_max_d_ij(A_r, j, D)
 			min_i = get_min_d_ij(A_r, j, D)
-
 			diff = max_i - min_i
 			# current attribute j is added to the current intent Br if all values of attribute j and objects Ar are equal
 			if diff == 0:
-				print ('Case diff = 0' )
-				print ( ' j =' ,j)
 				B_r = add_to_set(B_r, j)
 				coll_bc[r][1] = B_r
+				# print('Case diff = 0', ' j =', j, 'Adding j to B_r . Now B_r', B_r)
 			else:
 				# Compute the possible extents
 				possible_extents = get_possible_extents(A_r,D,j)
-				print ('Exploring possible extents', possible_extents)
+				# print ('Exploring possible extents', possible_extents)
 
 				for RW in possible_extents:
 					if len(RW) >= min_rows:
 						canon = is_canonical(RW, B_r, D, j)
-
 						if canon == True :
 							r_new = r_new + 1
 							R = add_to_set(R, r_new)
-							J = add_to_set(J, j)
-							print('J ',J)
+							# J = add_to_set(J, j)
+							J.append(j)
+							# print('J ',J)
 							coll_bc.append([None,None])
-							print('r_new ', r_new, 'RW : ', RW)
-
+							# print('r_new ', r_new, 'RW : ', RW)
 							coll_bc[r_new][0] = RW  # Arnew ← RW
 
 	print('Current J ', J)
 	print('Current R ', R)
-	exit(1)
+
 	for k in range(len(J)):
 		B_Rk = add_to_set(B_r, J[k])
 		coll_bc[R[k]][1] = B_Rk
@@ -177,11 +185,15 @@ def in_close_cvc(D, min_rows, r, y, coll_bc):
 	return coll_bc
 
 
-r_new = 0
-coll_bc = [
-	[[0, 1, 2, 3], []]
-]
+def call_inclose(data):
+	print(data)
+	global r_new
+	r_new = 0
+	coll_bc = [
+		[list(range(data.shape[0])), []]
+	]
+	coll_bc = in_close_cvc(D=data, min_rows=3, r=0, y=0, coll_bc=coll_bc)
+	print('---- Results-----')
+	disp_bc(coll_bc)
 
-in_close_cvc(data, 2, 0, 0, coll_bc)
-print('---- Results-----')
-disp_bc(coll_bc)
+call_inclose(data)
